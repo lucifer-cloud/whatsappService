@@ -1,3 +1,4 @@
+require('dotenv').config(); 
 const express = require('express');
 const { initializeWhatsApp, sendMessage } = require('./utils/service');
 const basicAuth = require('./middleware/auth');
