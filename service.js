@@ -5,7 +5,11 @@ let client = null;
 
 function initializeWhatsApp() {
     client = new Client({
-        authStrategy: new LocalAuth()
+        authStrategy: new LocalAuth(),
+        puppeteer: {
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+          }
+        
     });
 
     client.on('qr', (qr) => {
