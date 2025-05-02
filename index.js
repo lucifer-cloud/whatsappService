@@ -1,27 +1,53 @@
 require('dotenv').config(); 
 const express = require('express');
-const { initializeWhatsApp, sendMessage } = require('./utils/service');
-const basicAuth = require('./middleware/auth');
-const errorHandler = require('./middleware/errorHandler'); // <-- import
-const { sendMessageController } = require('./controllers/messageController');
+const qrcode  = require('qrcode-terminal');
+const { Client, LocalAuth  } = require('whatsapp-web.js');
+const cehckAuth = require('./src/middleware/auth');
 
 const app = express();
+const client = new Client();
 
 
 app.use(express.json());
 
-// Initialize WhatsApp
-try {
-    initializeWhatsApp();
-} catch (err) {
-    console.error('❌ Failed to initialize WhatsApp client:', err);
-}
+client.on('qr', (qr) => {
+    
+    qrcode.generate(qr, { small: true });
+    console.log('Scan QR Code !');
+    
+});
 
-app.post('/send-message', basicAuth, sendMessageController);
+client.on('ready', () => {
+    console.log('Client is ready!');
+});
 
-// Global error handler
-app.use(errorHandler);
+client.on('message', msg => {
+    if (msg.body == '!ping') {
+        msg.reply('pong');
+    }
+});
 
+client.initialize();
+
+app.post('/send-message', cehckAuth, async (req, res, next) => {
+    try {
+        const { number, message } = req.body;
+        if (!number || !message) {
+            return res.json({msg:"number or message is missing"})
+        }
+        if (!client) throw new Error('WhatsApp client not initialized');
+        const formattedNumber = number.includes('@c.us') ? number : `${number}@c.us`;
+        await client.sendMessage(formattedNumber, message);
+        res.status(200).json({ success: true, message: `✅ Message sent to ${number}` });
+    } catch (err) {
+        next(err);
+    }
+});
+
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'Internal Server Error' });
+});
 app.listen(process.env.PORT, () => {
-    console.log(`🚀 Server running at http://localhost:${process.env.PORT}`);
+    console.log(`Server running at http://localhost:${process.env.PORT}`);
 });

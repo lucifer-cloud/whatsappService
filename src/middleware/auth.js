@@ -1,10 +1,9 @@
-// middleware/auth.js
 
 require('dotenv').config(); 
 const USERNAME = process.env.AUTH_USERNAME;
 const PASSWORD = process.env.AUTH_PASSWORD;
 
-function basicAuth(req, res, next) {
+function cehckAuth(req, res, next) {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Basic ')) {
@@ -23,4 +22,4 @@ function basicAuth(req, res, next) {
     res.status(403).send('Access denied');
 }
 
-module.exports = basicAuth;
+module.exports = cehckAuth;
