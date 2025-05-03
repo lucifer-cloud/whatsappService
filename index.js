@@ -1,11 +1,15 @@
 require('dotenv').config(); 
 const express = require('express');
 const qrcode  = require('qrcode-terminal');
-const { Client, LocalAuth  } = require('whatsapp-web.js');
+const { Client  } = require('whatsapp-web.js');
 const cehckAuth = require('./src/middleware/auth');
 
 const app = express();
-const client = new Client();
+const client = new Client({
+    puppeteer: {
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    }
+});
 
 
 app.use(express.json());
