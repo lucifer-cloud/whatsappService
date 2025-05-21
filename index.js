@@ -19,7 +19,7 @@ client.on('qr', (qr) => {
     
     qrcode.generate(qr, { small: true });
     console.log('Scan QR Code !');
-    logger.info(`QR content: ${qr}`);
+    // logger.info(`QR content: ${qr}`);
 
     
 });
