@@ -1,31 +1,36 @@
 require('dotenv').config(); 
 const express = require('express');
 const qrcode  = require('qrcode-terminal');
+const QRCode = require('qrcode');
+const cors = require('cors');
+
 const { Client  } = require('whatsapp-web.js');
+
 const cehckAuth = require('./src/middleware/auth');
 const logger = require('./logger');
+const updateStatus = require('./src/service/updateStatus');
 
 const app = express();
+app.use(cors()); 
 const client = new Client({
     puppeteer: {
         args: ['--no-sandbox', '--disable-setuid-sandbox']
     }
 });
-
+let latestQRCode = null; 
 
 app.use(express.json());
 
 client.on('qr', (qr) => {
-    
+    latestQRCode = qr;
     qrcode.generate(qr, { small: true });
     console.log('Scan QR Code !');
-    // logger.info(`QR content: ${qr}`);
-
-    
+    // logger.info(`QR content: ${qr}`);    
 });
 
-client.on('ready', () => {
+client.on('ready', async () => {
     console.log('Client is ready!');
+    await updateStatus('active');
 });
 
 client.on('message', msg => {
@@ -33,15 +38,27 @@ client.on('message', msg => {
         msg.reply('pong');
     }
 });
-client.on('disconnected', (reason) => {
+client.on('disconnected', async (reason) => {
     logger.info(`WhatsApp client disconnected: ${reason}`);
+    await updateStatus('inactive');
 });
 client.on('auth_failure', msg => {
     logger.error(`Authentication failure: ${msg}`);
 });
 
 client.initialize();
+app.get('/qr-image', async (req, res) => {
+    if (!latestQRCode) {
+        return res.status(404).json({ error: 'QR Code not generated yet' });
+    }
 
+    try {
+        const qrImage = await QRCode.toDataURL(latestQRCode);
+        res.status(200).json({ image: qrImage });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to generate QR image' });
+    }
+});
 app.post('/send-message', cehckAuth, async (req, res, next) => {
     try {
         const { number, message } = req.body;
@@ -59,7 +76,8 @@ app.post('/send-message', cehckAuth, async (req, res, next) => {
     }
 });
 
-app.use((err, req, res, next) => {
+app.use(async (err, req, res, next) => {
+    await updateStatus('inactive'); // ⬅️ Await here
     console.error(err.stack);
     logger.error(`Unhandled error: ${err.stack}`);
     res.status(500).json({ error: 'Internal Server Error' });
